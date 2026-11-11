@@ -10,8 +10,8 @@ namespace matops::detail {
 // Accumulates one packed 4x4 double-precision tile. A is laid out as
 // [K][MR], B as [K][NR], and C must have unit column stride.
 inline void simd_microkernel_4x4_double(index K_depth, double alpha,
-                                       const double* A, const double* B,
-                                       double* C, index C_row_stride) {
+                                        const double *A, const double *B,
+                                        double *C, index C_row_stride) {
   float64x2_t c0_lo = vld1q_f64(C + 0 * C_row_stride);
   float64x2_t c0_hi = vld1q_f64(C + 0 * C_row_stride + 2);
   float64x2_t c1_lo = vld1q_f64(C + 1 * C_row_stride);
@@ -49,5 +49,5 @@ inline void simd_microkernel_4x4_double(index K_depth, double alpha,
   vst1q_f64(C + 3 * C_row_stride + 2, c3_hi);
 }
 
-}  // namespace matops::detail
+} // namespace matops::detail
 #endif

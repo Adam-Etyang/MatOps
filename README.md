@@ -2,9 +2,8 @@
 
 MatOps is a C++20 project built with CMake.
 
-The project is structured around a GEMM implementation. The public interfaces
-are in `include/matops`, implementation layers are in `src`, and the current
-algorithm-specific files are intentionally scaffolds.
+The project is structured around a GEMM implementation. Public interfaces are
+in `include/matops`, and implementation layers are in `src`.
 
 ## Build
 
@@ -13,8 +12,22 @@ cmake -S . -B build
 cmake --build build
 ```
 
-Tests and benchmark scaffolds are enabled by default. Disable either target
-with `-DMATOPS_BUILD_TESTS=OFF` or `-DMATOPS_BUILD_BENCHMARKS=OFF`.
+GoogleTest-backed tests and GEMM benchmarks are enabled by default. CMake
+uses an installed GoogleTest package when available, otherwise it fetches
+GoogleTest v1.17.0. Disable either target with `-DMATOPS_BUILD_TESTS=OFF` or
+`-DMATOPS_BUILD_BENCHMARKS=OFF`.
+
+Run the tests with:
+
+```sh
+ctest --test-dir build --output-on-failure
+```
+
+Run the GEMM benchmarks with:
+
+```sh
+./build/matops_benchmarks
+```
 
 Run the executable with:
 
@@ -23,4 +36,6 @@ Run the executable with:
 ```
 
 See `docs/architecture.md` for the implementation boundaries and open design
-decisions.
+decisions. See `docs/benchmark_baseline.md`,
+`docs/benchmark_register_microkernel.md`, `docs/benchmark_panel_packing.md`,
+and `docs/benchmark_simd_microkernel.md` for the GEMM benchmark results.

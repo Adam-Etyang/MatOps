@@ -3,10 +3,10 @@
 ## Purpose and boundary
 
 GEBP is an internal building block for GEMM and other operations that need a
-panel product. It is not part of the public `include/matops` API. Its initial
-implementation should be a simple scalar reference kernel; packing,
-microkernels, SIMD, and tuning can be added later without changing the
-mathematical contract.
+panel product. It is not part of the public `include/matops` API. Its current
+implementation has a scalar fallback, a scalar 4x4 register-blocked
+microkernel, and an internal packed-panel entry point used by GEMM. SIMD and
+tuning can be added later without changing the mathematical contract.
 
 The proposed internal interface is:
 
@@ -75,8 +75,11 @@ they are read-only. The caller is responsible for meeting these storage
 preconditions; GEBP does not detect overlap.
 
 An optimized implementation may add fast paths for layouts it supports and
-use packing or a fallback for other valid strides. Those implementation
-details do not change this interface contract.
+use packing or a fallback for other valid strides. GEMM currently packs A in
+4-row micro-panels and B in 4-column micro-panels, padding the last micro-panel
+with zeros. The packed GEBP path uses the 4x4 microkernel for full output tiles
+and a scalar fallback for partial output tiles. These implementation details
+do not change the strided GEBP interface contract.
 
 ## Types and numerical behavior
 
@@ -98,14 +101,15 @@ the caller must synchronize calls that would update the same C elements.
 
 ## Implementation sequence
 
-1. Implement a scalar reference GEBP that follows this contract.
-2. Add focused GEBP correctness tests, including edge dimensions, supported
-   strides, and accumulation into an existing C tile.
-3. Integrate compiled implementation files into `CMakeLists.txt` when needed.
-4. Implement GEMM's M/N/K-panel orchestration and test repeated K-panel
-   accumulation against a reference GEMM.
-5. Add reproducible benchmarks. Use their results to guide block sizes before
-   considering packing, fixed-size microkernels, SIMD, dispatch, or tuning.
+1. Keep a scalar reference fallback for edge tiles and unsupported layouts.
+2. Use the 4x4 register-blocked kernel for full tiles and test both paths
+   against a straightforward reference.
+3. Pack GEMM panels into the microkernel layout and verify full and partial
+   panels against the strided reference path.
+4. Test GEMM's M/N/K-panel orchestration and repeated K-panel accumulation
+   against a reference GEMM.
+5. Add reproducible benchmarks. Use measurements to decide whether the current
+   packing and block sizes are beneficial before adding SIMD or tuning.
 
 Runtime autotuning is not part of the initial design. Start with measured,
 explicit parameters and revisit tuning only after there are multiple useful
