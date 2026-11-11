@@ -1,14 +1,17 @@
 #pragma once
 
 #include <cassert>
+
+#include "matops/matrix_view.hpp"
+
 namespace matops::detail {
 
 template <typename T>
 void gebp(T alpha, matrix_view<const T> A_panel, matrix_view<const T> B_panel,
           matrix_view<T> C_tile) {
   assert(A_panel.columns() == B_panel.rows());
-  assert(C_tile.rows() == B_panel.rows);
-  assert(C_tyle.columns() == A_panel.columns());
+  assert(C_tile.rows() == A_panel.rows());
+  assert(C_tile.columns() == B_panel.columns());
 
   if (alpha == T(0)) {
     return;
