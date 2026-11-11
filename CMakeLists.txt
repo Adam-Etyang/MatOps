@@ -43,12 +43,29 @@ matops_enable_warnings(matops)
 if(MATOPS_BUILD_TESTS)
     enable_testing()
 
+    find_package(GTest CONFIG QUIET)
+    if(NOT GTest_FOUND)
+        include(FetchContent)
+        set(BUILD_GMOCK OFF CACHE BOOL "Build GoogleMock" FORCE)
+        FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.17.0
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(googletest)
+    endif()
+
+    include(GoogleTest)
+
     add_executable(matops_tests
         tests/smoke.cpp
+        tests/gebp_test.cpp
     )
-    target_link_libraries(matops_tests PRIVATE matops_core)
+    target_link_libraries(matops_tests PRIVATE matops_core GTest::gtest_main)
+    target_include_directories(matops_tests PRIVATE ${PROJECT_SOURCE_DIR}/src)
     matops_enable_warnings(matops_tests)
-    add_test(NAME matops.smoke COMMAND matops_tests)
+    gtest_discover_tests(matops_tests DISCOVERY_MODE PRE_TEST)
 endif()
 
 if(MATOPS_BUILD_BENCHMARKS)
