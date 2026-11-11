@@ -112,6 +112,59 @@ TEST(GEMMTest, HandlesStridedAAcrossMultipleKPanels) {
   }
 }
 
+TEST(GEMMTest, PacksSignedBStrideIntoStridedC) {
+  constexpr matops::index M = 4;
+  constexpr matops::index N = 5;
+  constexpr matops::index K = 9;
+  constexpr double alpha = 0.75;
+  constexpr double beta = 1.5;
+
+  matops::matrix<double> A_storage(M, K);
+  matops::matrix<double> B_storage(K, N);
+  matops::matrix<double> C_storage(M, 2 * N);
+  auto a = A_storage.view();
+  auto b_storage = B_storage.view();
+
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index k = 0; k < K; ++k) {
+      a(i, k) = 0.125 * (i - 2 * k + 3);
+    }
+  }
+  for (matops::index k = 0; k < K; ++k) {
+    for (matops::index j = 0; j < N; ++j) {
+      b_storage(k, j) = 0.0625 * (3 * k + j - 4);
+    }
+  }
+
+  matops::matrix_view<const double> A(
+      A_storage.data(), M, K, K, 1);
+  matops::matrix_view<const double> B(
+      B_storage.data() + N - 1, K, N, N, -1);
+  matops::matrix_view<double> C(C_storage.data(), M, N, 2 * N, 2);
+  std::vector<double> expected(static_cast<std::size_t>(M * N));
+
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index j = 0; j < N; ++j) {
+      C(i, j) = 0.25 * (i + j - 2);
+      double product = 0.0;
+      for (matops::index k = 0; k < K; ++k) {
+        product += A(i, k) * B(k, j);
+      }
+      expected[static_cast<std::size_t>(i * N + j)] =
+          alpha * product + beta * C(i, j);
+    }
+  }
+
+  matops::gemm(alpha, A, B, beta, C);
+
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index j = 0; j < N; ++j) {
+      EXPECT_NEAR(C(i, j), expected[static_cast<std::size_t>(i * N + j)],
+                  1e-12);
+    }
+  }
+}
+
 TEST(GEMMTest, ComputesProductAndAppliesAlphaAndBeta) {
   const float a_data[] = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
   const float b_data[] = {7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f};
