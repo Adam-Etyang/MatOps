@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cassert>
+#include <type_traits>
 
 #include "gebp_config.hpp"
+#include "kernels/SIMD_kernel.hpp"
 #include "kernels/microkernel_4x4.hpp"
 #include "matops/matrix_view.hpp"
 
@@ -29,6 +31,16 @@ void gebp_packed(T alpha, const T* A_packed, const T* B_packed, index M,
           B_packed + (j / gebp_config::NR) * Kp * gebp_config::NR;
 
       if (rows == gebp_config::MR && columns == gebp_config::NR) {
+#if defined(__aarch64__) || defined(_M_ARM64)
+        if constexpr (std::is_same_v<T, double>) {
+          if (C_tile.column_stride() == 1) {
+            simd_microkernel_4x4_double(
+                Kp, alpha, A_micro, B_micro, &C_tile(i, j),
+                C_tile.row_stride());
+            continue;
+          }
+        }
+#endif
         microkernel_4x4(Kp, alpha, A_micro, 1, gebp_config::MR, B_micro,
                         gebp_config::NR, 1, &C_tile(i, j),
                         C_tile.row_stride(), C_tile.column_stride());

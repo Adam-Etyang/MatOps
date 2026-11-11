@@ -7,9 +7,9 @@ namespace matops::detail {
 // Updates a full 4x4 output tile from a K-depth panel. The pointers refer to
 // the logical top-left elements; signed strides are supported.
 template <typename T>
-inline void microkernel_4x4(index K_depth, T alpha, const T* A, index A_rs,
-                            index A_cs, const T* B, index B_rs, index B_cs,
-                            T* C, index C_rs, index C_cs) {
+inline void microkernel_4x4(index K_depth, T alpha, const T *A, index A_rs,
+                            index A_cs, const T *B, index B_rs, index B_cs,
+                            T *C, index C_rs, index C_cs) {
   T c00 = C[0 * C_rs + 0 * C_cs];
   T c01 = C[0 * C_rs + 1 * C_cs];
   T c02 = C[0 * C_rs + 2 * C_cs];
@@ -73,4 +73,4 @@ inline void microkernel_4x4(index K_depth, T alpha, const T* A, index A_rs,
   C[3 * C_rs + 3 * C_cs] = c33;
 }
 
-}  // namespace matops::detail
+} // namespace matops::detail

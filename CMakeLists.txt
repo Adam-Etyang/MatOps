@@ -74,5 +74,6 @@ if(MATOPS_BUILD_BENCHMARKS)
         benchmarks/gemm_benchmark.cpp
     )
     target_link_libraries(matops_benchmarks PRIVATE matops_core)
+    target_include_directories(matops_benchmarks PRIVATE ${PROJECT_SOURCE_DIR}/src)
     matops_enable_warnings(matops_benchmarks)
 endif()
