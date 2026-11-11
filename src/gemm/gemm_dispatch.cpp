@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "../gebp/gebp.hpp"
+#include "gemm_config.hpp"
 
 namespace matops::detail {
 
@@ -23,35 +24,45 @@ void gemm_impl(T alpha, matrix_view<const T> A, matrix_view<const T> B, T beta,
     throw std::invalid_argument("GEMM matrix dimensions are incompatible");
   }
 
-  for (index i = 0; i < M; ++i) {
-    for (index j = 0; j < N; ++j) {
-      if (beta == T(0)) {
-        C(i, j) = T(0);
-      } else {
-        C(i, j) *= beta;
-      }
-    }
-  }
-
-  if (alpha == T(0) || K == 0 || M == 0 || N == 0) {
+  if (M == 0 || N == 0) {
     return;
   }
 
-  constexpr index panel_size = 64;
-  for (index k = 0; k < K; k += panel_size) {
-    const index panel_k = std::min(panel_size, K - k);
-    matrix_view<const T> A_panel(
-        A.data() + k * A.column_stride(), M, panel_k, A.row_stride(),
-        A.column_stride());
-    matrix_view<const T> B_panel(
-        B.data() + k * B.row_stride(), panel_k, N, B.row_stride(),
-        B.column_stride());
+  for (index j = 0; j < N; j += gemm_config::NC) {
+    const index j_len = std::min(gemm_config::NC, N - j);
+    for (index i = 0; i < M; i += gemm_config::MC) {
+      const index i_len = std::min(gemm_config::MC, M - i);
+      matrix_view<T> C_tile(&C(i, j), i_len, j_len, C.row_stride(),
+                            C.column_stride());
 
-    gebp(alpha, A_panel, B_panel, C);
+      for (index ti = 0; ti < i_len; ++ti) {
+        for (index tj = 0; tj < j_len; ++tj) {
+          if (beta == T(0)) {
+            C_tile(ti, tj) = T(0);
+          } else {
+            C_tile(ti, tj) *= beta;
+          }
+        }
+      }
+
+      if (alpha == T(0) || K == 0) {
+        continue;
+      }
+
+      for (index p = 0; p < K; p += gemm_config::KC) {
+        const index p_len = std::min(gemm_config::KC, K - p);
+        matrix_view<const T> A_panel(&A(i, p), i_len, p_len, A.row_stride(),
+                                     A.column_stride());
+        matrix_view<const T> B_panel(&B(p, j), p_len, j_len, B.row_stride(),
+                                     B.column_stride());
+
+        gebp(alpha, A_panel, B_panel, C_tile);
+      }
+    }
   }
 }
 
-}  // namespace matops::detail
+} // namespace matops::detail
 
 namespace matops {
 
@@ -63,10 +74,9 @@ void gemm(T alpha, matrix_view<const T> A, matrix_view<const T> B, T beta,
 }
 
 template void gemm<float>(float, matrix_view<const float>,
-                          matrix_view<const float>, float,
-                          matrix_view<float>);
+                          matrix_view<const float>, float, matrix_view<float>);
 template void gemm<double>(double, matrix_view<const double>,
                            matrix_view<const double>, double,
                            matrix_view<double>);
 
-}  // namespace matops
+} // namespace matops
