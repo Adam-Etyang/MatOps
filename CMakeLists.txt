@@ -61,6 +61,7 @@ if(MATOPS_BUILD_TESTS)
     add_executable(matops_tests
         tests/smoke.cpp
         tests/gebp_test.cpp
+        tests/gemm_test.cpp
     )
     target_link_libraries(matops_tests PRIVATE matops_core GTest::gtest_main)
     target_include_directories(matops_tests PRIVATE ${PROJECT_SOURCE_DIR}/src)
