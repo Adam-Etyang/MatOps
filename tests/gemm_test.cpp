@@ -3,13 +3,69 @@
 #include <limits>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
+#include "gemm/gemm_config.hpp"
 #include "matops/gemm.hpp"
 #include "matops/matrix.hpp"
 
+namespace {
+
+void expect_gemm_matches_reference(matops::index M, matops::index N,
+                                   matops::index K) {
+  constexpr double alpha = 1.25;
+  constexpr double beta = -0.5;
+
+  matops::matrix<double> A(M, K);
+  matops::matrix<double> B(K, N);
+  matops::matrix<double> C(M, N);
+  auto a = A.view();
+  auto b = B.view();
+  auto c = C.view();
+
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index k = 0; k < K; ++k) {
+      a(i, k) = static_cast<double>((i * 3 + k * 2) % 11 - 5) * 0.125;
+    }
+  }
+  for (matops::index k = 0; k < K; ++k) {
+    for (matops::index j = 0; j < N; ++j) {
+      b(k, j) = static_cast<double>((k * 5 + j * 3) % 13 - 6) * 0.0625;
+    }
+  }
+
+  std::vector<double> expected(static_cast<std::size_t>(M * N));
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index j = 0; j < N; ++j) {
+      c(i, j) = static_cast<double>((i + 2 * j) % 7 - 3) * 0.25;
+      double product = 0.0;
+      for (matops::index k = 0; k < K; ++k) {
+        product += a(i, k) * b(k, j);
+      }
+      expected[static_cast<std::size_t>(i * N + j)] =
+          alpha * product + beta * c(i, j);
+    }
+  }
+
+  matops::gemm(alpha, std::as_const(A).view(), std::as_const(B).view(), beta,
+               c);
+
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index j = 0; j < N; ++j) {
+      SCOPED_TRACE(testing::Message() << "M=" << M << " N=" << N
+                                      << " K=" << K << " i=" << i
+                                      << " j=" << j);
+      EXPECT_NEAR(c(i, j), expected[static_cast<std::size_t>(i * N + j)],
+                  1e-10);
+    }
+  }
+}
+
+}  // namespace
+
 TEST(GEMMTest, HandlesStridedAAcrossMultipleKPanels) {
   constexpr matops::index M = 2;
-  constexpr matops::index K = 70;
+  constexpr matops::index K = matops::detail::gemm_config::KC + 1;
   constexpr matops::index N = 3;
   constexpr double alpha = 0.5;
   constexpr double beta = 1.5;
@@ -126,4 +182,16 @@ TEST(GEMMTest, RejectsIncompatibleDimensions) {
   matops::matrix_view<double> C(c_data, 2, 2, 2, 1);
 
   EXPECT_THROW(matops::gemm(1.0, A, B, 0.0, C), std::invalid_argument);
+}
+
+TEST(GEMMTest, HandlesPartialMTile) {
+  expect_gemm_matches_reference(matops::detail::gemm_config::MC + 1, 5, 7);
+}
+
+TEST(GEMMTest, HandlesPartialNTile) {
+  expect_gemm_matches_reference(5, matops::detail::gemm_config::NC + 1, 7);
+}
+
+TEST(GEMMTest, HandlesPartialKPanel) {
+  expect_gemm_matches_reference(5, 7, matops::detail::gemm_config::KC + 1);
 }
