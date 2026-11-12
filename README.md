@@ -38,4 +38,11 @@ Run the executable with:
 See `docs/architecture.md` for the implementation boundaries and open design
 decisions. See `docs/benchmark_baseline.md`,
 `docs/benchmark_register_microkernel.md`, `docs/benchmark_panel_packing.md`,
-and `docs/benchmark_simd_microkernel.md` for the GEMM benchmark results.
+`docs/benchmark_simd_microkernel.md`, and `docs/gemm_block_tuning.md` for GEMM
+benchmark and block-tuning results.
+
+Run a Release block-size sweep with:
+
+```sh
+python3 scripts/tune_gemm_blocks.py
+```

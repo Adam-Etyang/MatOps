@@ -29,6 +29,7 @@ bool run_case(const benchmark_case& test_case) {
   constexpr double beta = 0.0;
   constexpr int warmup_runs = 2;
   constexpr int sample_count = 7;
+  constexpr int calls_per_sample = 5;
 
   matops::matrix<double> A(test_case.M, test_case.K);
   matops::matrix<double> B(test_case.K, test_case.N);
@@ -84,10 +85,13 @@ bool run_case(const benchmark_case& test_case) {
   std::array<double, sample_count> samples_ms{};
   for (int sample = 0; sample < sample_count; ++sample) {
     const auto start = clock_type::now();
-    matops::gemm(alpha, A_view, B_view, beta, c);
+    for (int call = 0; call < calls_per_sample; ++call) {
+      matops::gemm(alpha, A_view, B_view, beta, c);
+    }
     const auto finish = clock_type::now();
     samples_ms[static_cast<std::size_t>(sample)] =
-        std::chrono::duration<double, std::milli>(finish - start).count();
+        std::chrono::duration<double, std::milli>(finish - start).count() /
+        calls_per_sample;
   }
   std::sort(samples_ms.begin(), samples_ms.end());
 
@@ -128,7 +132,8 @@ int main() {
       benchmark_case{"K-edge", 5, 7, KC + 1},
   };
 
-  std::cout << "GEMM benchmark (double; 2 warmups, median of 7 samples)\n"
+  std::cout << "GEMM benchmark (double; 2 warmups, median of 7 samples, "
+               "5 calls/sample)\n"
             << "Shape: M x N x K\n";
   for (const auto& test_case : cases) {
     if (!run_case(test_case)) {

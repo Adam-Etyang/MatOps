@@ -5,9 +5,8 @@
 
 namespace matops::detail {
 
-void simd_microkernel_4x4_float(index K_depth, float alpha, const float* A,
-                                const float* B, float* C,
-                                index C_row_stride) {
+void simd_microkernel_4x4_float(index K_depth, float alpha, const float *A,
+                                const float *B, float *C, index C_row_stride) {
   float32x4_t c0 = vld1q_f32(C + 0 * C_row_stride);
   float32x4_t c1 = vld1q_f32(C + 1 * C_row_stride);
   float32x4_t c2 = vld1q_f32(C + 2 * C_row_stride);
@@ -32,5 +31,5 @@ void simd_microkernel_4x4_float(index K_depth, float alpha, const float* A,
   vst1q_f32(C + 3 * C_row_stride, c3);
 }
 
-}  // namespace matops::detail
+} // namespace matops::detail
 #endif

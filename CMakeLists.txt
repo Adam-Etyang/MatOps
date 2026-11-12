@@ -8,6 +8,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(MATOPS_BUILD_TESTS "Build MatOps tests" ON)
 option(MATOPS_BUILD_BENCHMARKS "Build MatOps benchmarks" ON)
+set(MATOPS_GEMM_MC 64 CACHE STRING "GEMM M cache block size")
+set(MATOPS_GEMM_NC 512 CACHE STRING "GEMM N cache block size")
+set(MATOPS_GEMM_KC 256 CACHE STRING "GEMM K cache block size")
+
+foreach(block_var IN ITEMS MATOPS_GEMM_MC MATOPS_GEMM_NC MATOPS_GEMM_KC)
+    if(NOT "${${block_var}}" MATCHES "^[1-9][0-9]*$")
+        message(FATAL_ERROR "${block_var} must be a positive integer")
+    endif()
+endforeach()
+
+math(EXPR MATOPS_GEMM_MC_REMAINDER "${MATOPS_GEMM_MC} % 4")
+math(EXPR MATOPS_GEMM_NC_REMAINDER "${MATOPS_GEMM_NC} % 4")
+if(NOT MATOPS_GEMM_MC_REMAINDER EQUAL 0 OR
+   NOT MATOPS_GEMM_NC_REMAINDER EQUAL 0)
+    message(FATAL_ERROR "MATOPS_GEMM_MC and MATOPS_GEMM_NC must be multiples of 4")
+endif()
 
 add_library(matops_core STATIC
     src/matrix.cpp
@@ -23,6 +39,12 @@ target_include_directories(matops_core
 )
 
 target_compile_features(matops_core PUBLIC cxx_std_20)
+target_compile_definitions(matops_core
+    PUBLIC
+        MATOPS_GEMM_MC=${MATOPS_GEMM_MC}
+        MATOPS_GEMM_NC=${MATOPS_GEMM_NC}
+        MATOPS_GEMM_KC=${MATOPS_GEMM_KC}
+)
 
 add_executable(matops
     src/main.cpp
