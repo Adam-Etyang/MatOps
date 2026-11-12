@@ -39,6 +39,13 @@ void gebp_packed(T alpha, const T* A_packed, const T* B_packed, index M,
                 C_tile.row_stride());
             continue;
           }
+        } else if constexpr (std::is_same_v<T, float>) {
+          if (C_tile.column_stride() == 1) {
+            simd_microkernel_4x4_float(
+                Kp, alpha, A_micro, B_micro, &C_tile(i, j),
+                C_tile.row_stride());
+            continue;
+          }
         }
 #endif
         microkernel_4x4(Kp, alpha, A_micro, 1, gebp_config::MR, B_micro,

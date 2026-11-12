@@ -12,6 +12,7 @@ option(MATOPS_BUILD_BENCHMARKS "Build MatOps benchmarks" ON)
 add_library(matops_core STATIC
     src/matrix.cpp
     src/gemm/gemm_dispatch.cpp
+    src/gebp/kernels/SIMD_kernel_float.cpp
     src/runtime/cpu_features.cpp
     src/runtime/thread_pool.cpp
 )

@@ -182,6 +182,50 @@ TEST(GEMMTest, ComputesProductAndAppliesAlphaAndBeta) {
   EXPECT_FLOAT_EQ(C(1, 1), 310.0f);
 }
 
+TEST(GEMMTest, FloatFullTileMatchesReference) {
+  constexpr matops::index M = 4;
+  constexpr matops::index N = 4;
+  constexpr matops::index K = 5;
+  constexpr float alpha = 0.75f;
+  constexpr float beta = -0.5f;
+
+  float a_data[M * K];
+  float b_data[K * N];
+  float c_data[M * N];
+  float expected[M * N];
+
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index k = 0; k < K; ++k) {
+      a_data[i * K + k] = 0.125f * static_cast<float>(i + 2 * k - 3);
+    }
+  }
+  for (matops::index k = 0; k < K; ++k) {
+    for (matops::index j = 0; j < N; ++j) {
+      b_data[k * N + j] = 0.0625f * static_cast<float>(3 * k - j + 2);
+    }
+  }
+  for (matops::index i = 0; i < M; ++i) {
+    for (matops::index j = 0; j < N; ++j) {
+      const matops::index index = i * N + j;
+      c_data[index] = 0.25f * static_cast<float>(i - j);
+      float product = 0.0f;
+      for (matops::index k = 0; k < K; ++k) {
+        product += a_data[i * K + k] * b_data[k * N + j];
+      }
+      expected[index] = alpha * product + beta * c_data[index];
+    }
+  }
+
+  matops::matrix_view<const float> A(a_data, M, K, K, 1);
+  matops::matrix_view<const float> B(b_data, K, N, N, 1);
+  matops::matrix_view<float> C(c_data, M, N, N, 1);
+  matops::gemm(alpha, A, B, beta, C);
+
+  for (matops::index i = 0; i < M * N; ++i) {
+    EXPECT_NEAR(c_data[i], expected[i], 1e-5f);
+  }
+}
+
 TEST(GEMMTest, BetaZeroDoesNotReadOldC) {
   const double a_data[] = {2.0};
   const double b_data[] = {3.0};
