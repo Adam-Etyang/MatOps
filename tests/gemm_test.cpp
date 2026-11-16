@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <future>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -8,6 +9,7 @@
 #include "gemm/gemm_config.hpp"
 #include "matops/gemm.hpp"
 #include "matops/matrix.hpp"
+#include "matops/threadpool.hpp"
 
 namespace {
 
@@ -291,4 +293,21 @@ TEST(GEMMTest, HandlesPartialNTile) {
 
 TEST(GEMMTest, HandlesPartialKPanel) {
   expect_gemm_matches_reference(5, 7, matops::detail::gemm_config::KC + 1);
+}
+
+TEST(GEMMTest, ParallelOutputTilesMatchReference) {
+  expect_gemm_matches_reference(2 * matops::detail::gemm_config::MC + 1,
+                                 matops::detail::gemm_config::NC + 1, 32);
+}
+
+TEST(ThreadpoolTest, EnqueueReturnsTaskResults) {
+  matops::Threadpool pool(3);
+  std::vector<std::future<int>> results;
+  for (int value = 0; value < 32; ++value) {
+    results.push_back(pool.enqueue([value] { return value * value; }));
+  }
+
+  for (int value = 0; value < 32; ++value) {
+    EXPECT_EQ(results[static_cast<std::size_t>(value)].get(), value * value);
+  }
 }
