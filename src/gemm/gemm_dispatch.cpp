@@ -18,8 +18,8 @@ namespace matops::detail {
 namespace {
 
 template <typename T>
-void pack_a(index rows, index Kp, const T* source, index row_stride,
-            index column_stride, T* packed) {
+void pack_a(index rows, index Kp, const T *source, index row_stride,
+            index column_stride, T *packed) {
   index packed_index = 0;
   for (index i = 0; i < rows; i += gebp_config::MR) {
     const index rows_in_panel = std::min(gebp_config::MR, rows - i);
@@ -37,8 +37,8 @@ void pack_a(index rows, index Kp, const T* source, index row_stride,
 }
 
 template <typename T>
-void pack_b(index Kp, index columns, const T* source, index row_stride,
-            index column_stride, T* packed) {
+void pack_b(index Kp, index columns, const T *source, index row_stride,
+            index column_stride, T *packed) {
   index packed_index = 0;
   for (index j = 0; j < columns; j += gebp_config::NR) {
     const index columns_in_panel = std::min(gebp_config::NR, columns - j);
@@ -55,8 +55,7 @@ void pack_b(index Kp, index columns, const T* source, index row_stride,
   }
 }
 
-template <typename T>
-void scale_c(T beta, matrix_view<T> C) {
+template <typename T> void scale_c(T beta, matrix_view<T> C) {
   for (index i = 0; i < C.rows(); ++i) {
     for (index j = 0; j < C.columns(); ++j) {
       if (beta == T(0)) {
@@ -70,7 +69,7 @@ void scale_c(T beta, matrix_view<T> C) {
 
 template <typename T>
 void gemm_output_tile(T alpha, matrix_view<const T> A, matrix_view<const T> B,
-                     T beta, matrix_view<T> C, index i, index j) {
+                      T beta, matrix_view<T> C, index i, index j) {
   const index i_len = std::min(gemm_config::MC, A.rows() - i);
   const index j_len = std::min(gemm_config::NC, B.columns() - j);
   const index max_k = std::min(A.columns(), gemm_config::KC);
@@ -97,12 +96,12 @@ void gemm_output_tile(T alpha, matrix_view<const T> A, matrix_view<const T> B,
   }
 }
 
-Threadpool& get_global_gemm_pool() {
+Threadpool &get_global_gemm_pool() {
   static Threadpool pool;
   return pool;
 }
 
-}  // namespace
+} // namespace
 
 template <typename T>
 void gemm_impl(T alpha, matrix_view<const T> A, matrix_view<const T> B, T beta,
@@ -132,9 +131,9 @@ void gemm_impl(T alpha, matrix_view<const T> A, matrix_view<const T> B, T beta,
   const index M_tiles = (M + gemm_config::MC - 1) / gemm_config::MC;
   const index N_tiles = (N + gemm_config::NC - 1) / gemm_config::NC;
   const index tile_count = M_tiles * N_tiles;
-  const double operation_count =
-      2.0 * static_cast<double>(M) * static_cast<double>(N) *
-      static_cast<double>(K);
+  const double operation_count = 2.0 * static_cast<double>(M) *
+                                 static_cast<double>(N) *
+                                 static_cast<double>(K);
   constexpr double parallel_threshold = 2.0e6;
 
   auto run_serial = [&] {
@@ -175,20 +174,20 @@ void gemm_impl(T alpha, matrix_view<const T> A, matrix_view<const T> B, T beta,
     return;
   }
 
-  Threadpool& pool = get_global_gemm_pool();
+  Threadpool &pool = get_global_gemm_pool();
   std::vector<std::future<void>> futures;
   futures.reserve(static_cast<std::size_t>(tile_count));
 
   try {
     for (index j = 0; j < N; j += gemm_config::NC) {
       for (index i = 0; i < M; i += gemm_config::MC) {
-        futures.emplace_back(pool.enqueue(gemm_output_tile<T>, alpha, A, B,
-                                          beta, C, i, j));
+        futures.emplace_back(
+            pool.enqueue(gemm_output_tile<T>, alpha, A, B, beta, C, i, j));
       }
     }
   } catch (...) {
     const std::exception_ptr submission_error = std::current_exception();
-    for (auto& future : futures) {
+    for (auto &future : futures) {
       try {
         future.get();
       } catch (...) {
@@ -198,7 +197,7 @@ void gemm_impl(T alpha, matrix_view<const T> A, matrix_view<const T> B, T beta,
   }
 
   std::exception_ptr task_error;
-  for (auto& future : futures) {
+  for (auto &future : futures) {
     try {
       future.get();
     } catch (...) {
@@ -212,7 +211,7 @@ void gemm_impl(T alpha, matrix_view<const T> A, matrix_view<const T> B, T beta,
   }
 }
 
-}  // namespace matops::detail
+} // namespace matops::detail
 
 namespace matops {
 
@@ -229,4 +228,4 @@ template void gemm<double>(double, matrix_view<const double>,
                            matrix_view<const double>, double,
                            matrix_view<double>);
 
-}  // namespace matops
+} // namespace matops
